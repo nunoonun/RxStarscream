@@ -15,9 +15,23 @@ public enum WebSocketEvent {
   case pong
 }
 
-open class RxWebSocketDelegateProxy: DelegateProxy<WebSocket, WebSocketDelegate>,
-                                       WebSocketDelegate,
-                                       WebSocketPongDelegate,
+
+@objc public protocol WebSocketWrapperDelegate {
+    
+    func mockWebsocketDidConnect(socket: Starscream.WebSocket)
+    
+    func mockWebsocketDidDisconnect(socket: Starscream.WebSocket, error: NSError?)
+    
+    func mockWebsocketDidReceiveMessage(socket: Starscream.WebSocket, text: String)
+    
+    func mockWebsocketDidReceiveData(socket: Starscream.WebSocket, data: Data)
+    
+    func mockWebsocketDidReceivePong(socket: WebSocket, data: Data?)
+}
+
+open class RxWebSocketDelegateProxy: DelegateProxy<WebSocket, WebSocketWrapperDelegate>,
+                                       WebSocketWrapperDelegate,
+                                       WebSocketDelegate, WebSocketPongDelegate,
                                        DelegateProxyType {
     
 
@@ -32,42 +46,63 @@ open class RxWebSocketDelegateProxy: DelegateProxy<WebSocket, WebSocketDelegate>
         super.init(parentObject: parentObject, delegateProxy: RxWebSocketDelegateProxy.self)
     }
 
-    public func websocketDidConnect(socket: WebSocket) {
+    public func mockWebsocketDidConnect(socket: WebSocket) {
         subject.on(.next(WebSocketEvent.connected))
         forwardDelegate?.websocketDidConnect(socket: socket)
     }
 
-    public func websocketDidDisconnect(socket: WebSocket, error: NSError?) {
+    public func mockWebsocketDidDisconnect(socket: WebSocket, error: NSError?) {
         subject.on(.next(WebSocketEvent.disconnected(error)))
         forwardDelegate?.websocketDidDisconnect(socket: socket, error: error)
     }
 
-    public func websocketDidReceiveMessage(socket: WebSocket, text: String) {
+    public func mockWebsocketDidReceiveMessage(socket: WebSocket, text: String) {
         subject.on(.next(WebSocketEvent.message(text)))
         forwardDelegate?.websocketDidReceiveMessage(socket: socket, text: text)
     }
 
-    public func websocketDidReceiveData(socket: WebSocket, data: Data) {
+    public func mockWebsocketDidReceiveData(socket: WebSocket, data: Data) {
         subject.on(.next(WebSocketEvent.data(data)))
         forwardDelegate?.websocketDidReceiveData(socket: socket, data: data)
     }
 
-    public func websocketDidReceivePong(socket: WebSocket, data: Data?) {
+    public func mockWebsocketDidReceivePong(socket: WebSocket, data: Data?) {
         subject.on(.next(WebSocketEvent.pong))
         forwardPongDelegate?.websocketDidReceivePong(socket: socket, data: data)
+    }
+                                        
+    public func websocketDidConnect(socket: WebSocket) {
+        mockWebsocketDidConnect(socket: socket)
+    }
+    
+    public func websocketDidDisconnect(socket: WebSocket, error: NSError?) {
+        mockWebsocketDidDisconnect(socket: socket, error: error)
+    }
+    
+    public func websocketDidReceiveMessage(socket: WebSocket, text: String) {
+        mockWebsocketDidReceiveMessage(socket: socket, text: text)
+    }
+    
+    public func websocketDidReceiveData(socket: WebSocket, data: Data) {
+        mockWebsocketDidReceiveData(socket: socket, data: data)
+    }
+    
+    public func websocketDidReceivePong(socket: WebSocket, data: Data?) {
+        mockWebsocketDidReceivePong(socket: socket, data: data)
     }
     
     public static func registerKnownImplementations() {
         self.register { RxWebSocketDelegateProxy(parentObject: $0) }
     }
     
-    public static func currentDelegate(for object: WebSocket) -> WebSocketDelegate? {
-        return object.delegate
+    public static func currentDelegate(for object: WebSocket) -> WebSocketWrapperDelegate? {
+        return object.delegate as? WebSocketWrapperDelegate
     }
     
-    public static func setCurrentDelegate(_ delegate: WebSocketDelegate?, to object: WebSocket) {
-        object.delegate = delegate
-        object.pongDelegate = delegate as? WebSocketPongDelegate
+    public static func setCurrentDelegate(_ delegate: WebSocketWrapperDelegate?, to object: WebSocket) {
+        let proxy = delegate as? RxWebSocketDelegateProxy
+        object.delegate = proxy
+        object.pongDelegate = proxy
     }
 
     deinit {
