@@ -1,16 +1,16 @@
 //
-//  RxStarscreamTests.swift
-//  RxStarscreamTests
+//  RxStarscream_macOSTests.swift
+//  RxStarscream-macOSTests
 //
-//  Created by Cezary Kopacz on 25/03/2017.
-//  Copyright © 2017 Guy Kahlon. All rights reserved.
+//  Created by 森下 侑亮 on 2018/03/07.
+//  Copyright © 2018年 Guy Kahlon. All rights reserved.
 //
 
 import XCTest
 import RxSwift
 import RxTest
 import Starscream
-import RxStarscream
+import RxStarscream_macOS
 
 extension WebSocketEvent: Equatable { }
 
@@ -53,15 +53,15 @@ class RxStarscreamTests: XCTestCase {
 
         let connected = socket.rx.connected.share(replay: 1)
         connected.subscribe(onNext: { [unowned self] _ in
-                    self.socket.disconnect()
-                }).disposed(by: disposeBag)
+            self.socket.disconnect()
+        }).disposed(by: disposeBag)
 
         socket.rx.connected
-                .subscribe(connectedObserver)
-                .disposed(by: disposeBag)
-        
+            .subscribe(connectedObserver)
+            .disposed(by: disposeBag)
+
         XCTAssertTrue(socket.delegate != nil, "delegate should be set")
-        
+
         socket.delegate!.websocketDidConnect(socket: socket)
         socket.delegate!.websocketDidDisconnect(socket: socket, error: nil)
 
@@ -75,11 +75,11 @@ class RxStarscreamTests: XCTestCase {
         pongObserver = scheduler.createObserver(WebSocketEvent.self)
 
         socket.rx.response
-                .subscribe(pongObserver)
-                .disposed(by: disposeBag)
-        
+            .subscribe(pongObserver)
+            .disposed(by: disposeBag)
+
         XCTAssertTrue(socket.pongDelegate != nil, "pongDelegate should be set")
-        
+
         socket.pongDelegate!.websocketDidReceivePong(socket: socket, data: Data())
 
         XCTAssertEqual(self.pongObserver.events.count, 1)
@@ -93,14 +93,15 @@ class RxStarscreamTests: XCTestCase {
         responseObserver = scheduler.createObserver(WebSocketEvent.self)
 
         socket.rx.response
-                .subscribe(responseObserver)
-                .disposed(by: disposeBag)
-        
+            .subscribe(responseObserver)
+            .disposed(by: disposeBag)
+
         XCTAssertTrue(socket.delegate != nil, "delegate should be set")
 
         socket.delegate!.websocketDidReceiveMessage(socket: socket, text: sentMessage)
-        
+
         XCTAssertEqual(self.responseObserver.events.count, 1)
         XCTAssertEqual(WebSocketEvent.message(sentMessage), self.responseObserver.events[0].value.element!)
     }
 }
+
